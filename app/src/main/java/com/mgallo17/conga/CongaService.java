@@ -13,16 +13,14 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import com.mgallo17.conga.proto.CongaProto;
-
 public class CongaService extends Service implements CongaClient.Listener {
 
-    private static final String TAG              = "CongaService";
-    private static final String CHANNEL_ID       = "conga_service";
-    private static final int    NOTIFICATION_ID  = 1;
+    private static final String TAG             = "CongaService";
+    private static final String CHANNEL_ID      = "conga_service";
+    private static final int    NOTIFICATION_ID = 1;
 
-    private final IBinder     binder = new LocalBinder();
-    private CongaClient       client;
+    private final IBinder binder = new LocalBinder();
+    private CongaClient           client;
     private LocalBroadcastManager broadcaster;
 
     public class LocalBinder extends Binder {
@@ -44,8 +42,7 @@ public class CongaService extends Service implements CongaClient.Listener {
         return START_STICKY;
     }
 
-    @Override
-    public IBinder onBind(Intent intent) { return binder; }
+    @Override public IBinder onBind(Intent intent) { return binder; }
 
     @Override
     public void onDestroy() {
@@ -54,28 +51,22 @@ public class CongaService extends Service implements CongaClient.Listener {
     }
 
     // ---------------------------------------------------------------
-    // Public API (called from Activities via binder)
+    // Public API
     // ---------------------------------------------------------------
 
     public void connect(String email, String password, String deviceId) {
         client.connect(email, password, deviceId);
     }
 
-    public void disconnect() {
-        client.disconnect();
-    }
+    public void disconnect() { client.disconnect(); }
 
-    public void sendCommand(int cmd) {
-        client.sendCommand(cmd);
-    }
+    public void sendCommand(int cmd) { client.sendCommand(cmd); }
 
     public void sendSchedule(int daysMask, int hour, int minute) {
         client.sendSchedule(daysMask, hour, minute);
     }
 
-    public boolean isConnected() {
-        return client != null && client.isConnected();
-    }
+    public boolean isConnected() { return client != null && client.isConnected(); }
 
     // ---------------------------------------------------------------
     // CongaClient.Listener
@@ -105,14 +96,14 @@ public class CongaService extends Service implements CongaClient.Listener {
         broadcast(CongaCommands.ACTION_DISCONNECTED);
     }
 
-    @Override public void onStatus(CongaProto.StatusResponse status) {
+    @Override public void onStatus(CongaMessage.StatusResponse status) {
         Intent intent = new Intent(CongaCommands.ACTION_STATUS_UPDATE);
-        intent.putExtra(CongaCommands.EXTRA_STATE,      status.getState());
-        intent.putExtra(CongaCommands.EXTRA_BATTERY,    status.getBattery());
-        intent.putExtra(CongaCommands.EXTRA_POS_X,      status.getPosX());
-        intent.putExtra(CongaCommands.EXTRA_POS_Y,      status.getPosY());
-        intent.putExtra(CongaCommands.EXTRA_CLEAN_TIME, status.getCleanTime());
-        intent.putExtra(CongaCommands.EXTRA_CLEAN_AREA, status.getCleanArea());
+        intent.putExtra(CongaCommands.EXTRA_STATE,      status.state);
+        intent.putExtra(CongaCommands.EXTRA_BATTERY,    status.battery);
+        intent.putExtra(CongaCommands.EXTRA_POS_X,      status.posX);
+        intent.putExtra(CongaCommands.EXTRA_POS_Y,      status.posY);
+        intent.putExtra(CongaCommands.EXTRA_CLEAN_TIME, status.cleanTime);
+        intent.putExtra(CongaCommands.EXTRA_CLEAN_AREA, status.cleanArea);
         broadcaster.sendBroadcast(intent);
     }
 
@@ -136,9 +127,8 @@ public class CongaService extends Service implements CongaClient.Listener {
     }
 
     private Notification buildNotification(String text) {
-        Intent notifIntent = new Intent(this, MainActivity.class);
-        PendingIntent pi = PendingIntent.getActivity(
-                this, 0, notifIntent, PendingIntent.FLAG_IMMUTABLE);
+        Intent ni = new Intent(this, MainActivity.class);
+        PendingIntent pi = PendingIntent.getActivity(this, 0, ni, PendingIntent.FLAG_IMMUTABLE);
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Conga")
                 .setContentText(text)
@@ -148,7 +138,6 @@ public class CongaService extends Service implements CongaClient.Listener {
     }
 
     private void updateNotification(String text) {
-        NotificationManager nm = getSystemService(NotificationManager.class);
-        nm.notify(NOTIFICATION_ID, buildNotification(text));
+        getSystemService(NotificationManager.class).notify(NOTIFICATION_ID, buildNotification(text));
     }
 }

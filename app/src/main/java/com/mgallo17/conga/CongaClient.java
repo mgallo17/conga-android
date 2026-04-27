@@ -2,8 +2,6 @@ package com.mgallo17.conga;
 
 import android.util.Log;
 
-import com.mgallo17.conga.proto.CongaProto;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -17,28 +15,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Manages the TCP connection to the Cecotec server and implements
- * the Conga protocol (login, ping, commands, status).
+ * the Conga binary protocol (login, ping, commands, status).
  */
 public class CongaClient {
 
     private static final String TAG             = "CongaClient";
-    private static final int    CONNECT_TIMEOUT = 10_000; // ms
-    private static final int    PING_INTERVAL   = 30;     // seconds
-    private static final int    RECONNECT_DELAY = 5;      // seconds
+    private static final int    CONNECT_TIMEOUT = 10_000;
+    private static final int    PING_INTERVAL   = 30;
+    private static final int    SOCKET_TIMEOUT  = 60_000;
 
     public interface Listener {
         void onConnected();
         void onDisconnected();
         void onLoginSuccess(int userId);
         void onLoginFailed(String reason);
-        void onStatus(CongaProto.StatusResponse status);
+        void onStatus(CongaMessage.StatusResponse status);
         void onError(String message);
     }
 
-    private final CongaProtocol              protocol  = new CongaProtocol();
-    private final ExecutorService            ioThread  = Executors.newSingleThreadExecutor();
-    private final ScheduledExecutorService   scheduler = Executors.newScheduledThreadPool(1);
-    private final AtomicBoolean              running   = new AtomicBoolean(false);
+    private final CongaProtocol            protocol  = new CongaProtocol();
+    private final ExecutorService          ioThread  = Executors.newSingleThreadExecutor();
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final AtomicBoolean            running   = new AtomicBoolean(false);
 
     private Socket       socket;
     private OutputStream out;
@@ -58,12 +56,7 @@ public class CongaClient {
     public void connect(String email, String password, String savedDeviceId) {
         if (running.getAndSet(true)) return;
 
-        int devId = 0;
-        try { devId = Integer.parseInt(savedDeviceId, 16); } catch (Exception ignored) {}
-        this.deviceId = devId;
-
-        final String pwd   = password;
-        final String eml   = email;
+        try { deviceId = Integer.parseInt(savedDeviceId, 16); } catch (Exception ignored) {}
 
         ioThread.execute(() -> {
             try {
@@ -71,19 +64,22 @@ public class CongaClient {
                 socket = new Socket();
                 socket.connect(new InetSocketAddress(
                         CongaCommands.SERVER_HOST, CongaCommands.SERVER_PORT), CONNECT_TIMEOUT);
+                socket.setSoTimeout(SOCKET_TIMEOUT);
                 out = socket.getOutputStream();
                 in  = socket.getInputStream();
 
                 if (listener != null) listener.onConnected();
 
-                // Send initial ping
+                // Initial ping
                 sendRaw(protocol.buildPing(0, deviceId));
 
-                // Schedule periodic pings
+                // Periodic pings
                 scheduler.scheduleAtFixedRate(this::ping, PING_INTERVAL, PING_INTERVAL, TimeUnit.SECONDS);
 
                 // Login
-                sendLogin(eml, pwd);
+                byte[] loginPayload = CongaMessage.loginRequest(
+                        email, CongaProtocol.md5(password), String.valueOf(deviceId));
+                sendRaw(protocol.buildFrame(CongaCommands.OPCODE_LOGIN, 0, deviceId, loginPayload));
 
                 // Read loop
                 readLoop();
@@ -104,34 +100,14 @@ public class CongaClient {
     }
 
     // ---------------------------------------------------------------
-    // Login
-    // ---------------------------------------------------------------
-
-    private void sendLogin(String email, String password) throws IOException {
-        CongaProto.LoginRequest req = CongaProto.LoginRequest.newBuilder()
-                .setUsername(email)
-                .setPassword(CongaProtocol.md5(password))
-                .setDeviceId(String.valueOf(deviceId))
-                .setAppVersion(1)
-                .build();
-
-        byte[] frame = protocol.buildFrame(
-                CongaCommands.OPCODE_LOGIN, 0, deviceId, req.toByteArray());
-        sendRaw(frame);
-    }
-
-    // ---------------------------------------------------------------
     // Commands
     // ---------------------------------------------------------------
 
     public void sendCommand(int cmd) {
         ioThread.execute(() -> {
             try {
-                CongaProto.CommandRequest req = CongaProto.CommandRequest.newBuilder()
-                        .setCommand(cmd)
-                        .build();
-                byte[] frame = protocol.buildFrame(
-                        CongaCommands.OPCODE_COMMAND, userId, deviceId, req.toByteArray());
+                byte[] payload = CongaMessage.commandRequest(cmd);
+                byte[] frame   = protocol.buildFrame(CongaCommands.OPCODE_COMMAND, userId, deviceId, payload);
                 sendRaw(frame);
             } catch (IOException e) {
                 Log.e(TAG, "sendCommand error: " + e.getMessage());
@@ -142,17 +118,8 @@ public class CongaClient {
     public void sendSchedule(int daysMask, int hour, int minute) {
         ioThread.execute(() -> {
             try {
-                CongaProto.ScheduleEntry entry = CongaProto.ScheduleEntry.newBuilder()
-                        .setDaysMask(daysMask)
-                        .setHour(hour)
-                        .setMinute(minute)
-                        .setEnabled(true)
-                        .build();
-                CongaProto.ScheduleRequest req = CongaProto.ScheduleRequest.newBuilder()
-                        .addEntries(entry)
-                        .build();
-                byte[] frame = protocol.buildFrame(
-                        CongaCommands.OPCODE_SCHEDULE_SET, userId, deviceId, req.toByteArray());
+                byte[] payload = CongaMessage.scheduleRequest(daysMask, hour, minute);
+                byte[] frame   = protocol.buildFrame(CongaCommands.OPCODE_SCHEDULE_SET, userId, deviceId, payload);
                 sendRaw(frame);
             } catch (IOException e) {
                 Log.e(TAG, "sendSchedule error: " + e.getMessage());
@@ -165,61 +132,52 @@ public class CongaClient {
     // ---------------------------------------------------------------
 
     private void readLoop() throws IOException {
-        byte[] headerBuf = new byte[4];
-        while (running.get() && !socket.isClosed()) {
-            // Read 4-byte length prefix
-            int read = readFully(headerBuf, 4);
-            if (read < 4) break;
+        byte[] header = new byte[4];
+        while (running.get() && socket != null && !socket.isClosed()) {
+            if (readFully(header, 0, 4) < 4) break;
 
-            int frameLen = CongaProtocol.readFrameLength(headerBuf);
-            if (frameLen < 24 || frameLen > 65536) {
-                Log.w(TAG, "Unexpected frame length: " + frameLen);
-                break;
-            }
+            int frameLen = CongaProtocol.readFrameLength(header);
+            if (frameLen < 24 || frameLen > 65536) { Log.w(TAG, "Bad frame len: " + frameLen); break; }
 
             byte[] frameBuf = new byte[frameLen];
-            System.arraycopy(headerBuf, 0, frameBuf, 0, 4);
-            read = readFully(frameBuf, 4, frameLen - 4);
-            if (read < frameLen - 4) break;
+            System.arraycopy(header, 0, frameBuf, 0, 4);
+            if (readFully(frameBuf, 4, frameLen - 4) < frameLen - 4) break;
 
             handleFrame(frameBuf);
         }
+        Log.d(TAG, "Read loop ended");
+        if (listener != null) listener.onDisconnected();
+        running.set(false);
     }
 
     private void handleFrame(byte[] data) {
         CongaProtocol.ParsedFrame frame = protocol.parseFrame(data);
         if (frame == null) return;
 
-        try {
-            switch (frame.opcode) {
-                case CongaCommands.OPCODE_PING_RESP:
-                    Log.d(TAG, "Pong received");
-                    break;
+        switch (frame.opcode) {
+            case CongaCommands.OPCODE_PING_RESP:
+                Log.d(TAG, "Pong");
+                break;
 
-                case CongaCommands.OPCODE_LOGIN_RESP:
-                    CongaProto.LoginResponse loginResp =
-                            CongaProto.LoginResponse.parseFrom(frame.payload);
-                    if (loginResp.getResult() == 0) {
-                        userId = loginResp.getUserId();
-                        Log.d(TAG, "Login OK, userId=" + userId);
-                        if (listener != null) listener.onLoginSuccess(userId);
-                    } else {
-                        Log.w(TAG, "Login failed: " + loginResp.getMsg());
-                        if (listener != null) listener.onLoginFailed(loginResp.getMsg());
-                    }
-                    break;
+            case CongaCommands.OPCODE_LOGIN_RESP:
+                CongaMessage.LoginResponse lr = CongaMessage.parseLoginResponse(frame.payload);
+                if (lr.result == 0) {
+                    userId = lr.userId;
+                    Log.d(TAG, "Login OK userId=" + userId);
+                    if (listener != null) listener.onLoginSuccess(userId);
+                } else {
+                    Log.w(TAG, "Login failed: " + lr.msg);
+                    if (listener != null) listener.onLoginFailed(lr.msg);
+                }
+                break;
 
-                case CongaCommands.OPCODE_STATUS:
-                    CongaProto.StatusResponse status =
-                            CongaProto.StatusResponse.parseFrom(frame.payload);
-                    if (listener != null) listener.onStatus(status);
-                    break;
+            case CongaCommands.OPCODE_STATUS:
+                CongaMessage.StatusResponse status = CongaMessage.parseStatusResponse(frame.payload);
+                if (listener != null) listener.onStatus(status);
+                break;
 
-                default:
-                    Log.d(TAG, "Unknown opcode: " + frame.opcode);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Frame parse error: " + e.getMessage());
+            default:
+                Log.d(TAG, "Opcode: " + frame.opcode);
         }
     }
 
@@ -233,14 +191,7 @@ public class CongaClient {
     }
 
     private synchronized void sendRaw(byte[] data) throws IOException {
-        if (out != null) {
-            out.write(data);
-            out.flush();
-        }
-    }
-
-    private int readFully(byte[] buf, int len) throws IOException {
-        return readFully(buf, 0, len);
+        if (out != null) { out.write(data); out.flush(); }
     }
 
     private int readFully(byte[] buf, int offset, int len) throws IOException {
