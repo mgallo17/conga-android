@@ -1,0 +1,44 @@
+syntax = "proto3";
+option java_package = "com.mgallo17.conga.proto";
+option java_outer_classname = "CongaProto";
+
+message LoginRequest {
+    string username = 1;
+    string password = 2;  // MD5 hash
+    string device_id = 3;
+    int32  app_version = 4;
+}
+
+message LoginResponse {
+    int32  result   = 1;
+    int32  user_id  = 2;
+    string token    = 3;
+    string msg      = 4;
+}
+
+message CommandRequest {
+    int32 command = 1;
+    int32 param1  = 2;
+    int32 param2  = 3;
+}
+
+message ScheduleEntry {
+    int32  days_mask = 1;  // bitmask: bit0=Mon..bit6=Sun
+    int32  hour      = 2;
+    int32  minute    = 3;
+    bool   enabled   = 4;
+}
+
+message ScheduleRequest {
+    repeated ScheduleEntry entries = 1;
+}
+
+message StatusResponse {
+    int32 state      = 1;  // 0=idle,1=cleaning,2=returning,3=charging,4=error
+    int32 battery    = 2;  // 0-100
+    float pos_x      = 3;
+    float pos_y      = 4;
+    int32 clean_time = 5;  // seconds
+    int32 clean_area = 6;  // cm²
+    int32 error_code = 7;
+}
