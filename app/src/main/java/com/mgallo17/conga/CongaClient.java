@@ -240,36 +240,39 @@ public class CongaClient {
                     int result = obj.optInt("result", -1);
                     if (result == 0) {
                         listener.onLoginSuccess();
-                        // Request status immediately
                         sendCmd(CongaProtocol.CMD_GET_STATUS);
                     } else {
                         listener.onLoginFailed(obj.optString("msg", "Login failed"));
                     }
                     break;
                 }
+                // Server always replies with 0x00fa (same as CMD_REQ)
+                // as well as 0x00fb and 0x0093 — handle all three
+                case CongaProtocol.MSG_CMD_REQ:
                 case CongaProtocol.MSG_STATUS_RSP:
                 case CongaProtocol.MSG_CMD_RSP: {
                     JSONObject value = obj.optJSONObject("value");
                     if (value == null) break;
+                    // Status push has noteCmd=102, or just has battery/workState fields
                     String noteCmd = value.optString("noteCmd", "");
-                    // noteCmd 102 = status update
-                    if ("102".equals(noteCmd) || msgType == CongaProtocol.MSG_STATUS_RSP) {
+                    boolean isStatus = "102".equals(noteCmd)
+                            || value.has("battery")
+                            || value.has("workState");
+                    if (isStatus) {
                         RobotStatus status = new RobotStatus();
-                        status.battery    = parseInt(value.optString("battery", "0"));
-                        status.workState  = parseInt(value.optString("workState", "0"));
-                        status.workMode   = parseInt(value.optString("workMode", "0"));
-                        status.fan        = parseInt(value.optString("fan", "0"));
-                        status.brush      = parseInt(value.optString("brush", "0"));
-                        status.error      = parseInt(value.optString("error", "0"));
-                        status.version    = value.optString("version1", value.optString("version", ""));
-                        status.deviceIp   = value.optString("deviceIp", robotIp);
+                        status.battery   = parseInt(value.optString("battery", "0"));
+                        status.workState = parseInt(value.optString("workState", "0"));
+                        status.workMode  = parseInt(value.optString("workMode", "0"));
+                        status.fan       = parseInt(value.optString("fan", "0"));
+                        status.brush     = parseInt(value.optString("brush", "0"));
+                        status.error     = parseInt(value.optString("error", "0"));
+                        status.version   = value.optString("version", "");
+                        status.deviceIp  = value.optString("deviceIp", robotIp);
                         status.devicePort = parseInt(value.optString("devicePort", "8888"));
 
-                        // Update robot IP/port from live response
                         if (!status.deviceIp.isEmpty()) robotIp = status.deviceIp;
-                        if (status.devicePort > 0) robotPort = status.devicePort;
+                        if (status.devicePort > 0)      robotPort = status.devicePort;
 
-                        // Update robotDeviceId from control block
                         JSONObject ctrl = obj.optJSONObject("control");
                         if (ctrl != null) {
                             String tid = ctrl.optString("targetId", "");
