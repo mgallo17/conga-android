@@ -16,7 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 public class MainActivity extends AppCompatActivity implements CongaClient.Listener {
 
     private TextView tvStatus, tvBattery, tvState, tvMode, tvVersion, tvError;
-    private Button   btnStart, btnHome, btnStatus;
+    private Button   btnStart, btnHome, btnStatus, btnSettings;
 
     private CongaClient client;
     private String token, userId, robotId, authCode, deviceId;
@@ -32,9 +32,10 @@ public class MainActivity extends AppCompatActivity implements CongaClient.Liste
         tvMode    = findViewById(R.id.tvMode);
         tvVersion = findViewById(R.id.tvVersion);
         tvError   = findViewById(R.id.tvError);
-        btnStart  = findViewById(R.id.btnStart);
-        btnHome   = findViewById(R.id.btnHome);
-        btnStatus = findViewById(R.id.btnStatus);
+        btnStart    = findViewById(R.id.btnStart);
+        btnHome     = findViewById(R.id.btnHome);
+        btnStatus   = findViewById(R.id.btnStatus);
+        btnSettings = findViewById(R.id.btnSettings);
 
         // Get credentials from intent or prefs
         token    = getIntent().getStringExtra(CongaCommands.PREF_SESSION_ID);
@@ -65,6 +66,8 @@ public class MainActivity extends AppCompatActivity implements CongaClient.Liste
         btnStatus.setOnClickListener(v -> {
             if (client != null) client.sendCmd(CongaProtocol.CMD_GET_STATUS);
         });
+        btnSettings.setOnClickListener(v ->
+            startActivity(new Intent(this, SettingsActivity.class)));
 
         setUiState("Connecting…", false);
         connectSocket();
