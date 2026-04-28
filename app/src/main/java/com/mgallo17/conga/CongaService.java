@@ -96,13 +96,15 @@ public class CongaService extends Service implements CongaClient.Listener {
     @Override public void onLoginSuccess(int userId) {
         Log.d(TAG, "Login OK");
         updateNotification("Conga connected ✓");
-        broadcast(CongaCommands.ACTION_CONNECTED);
+        broadcast(CongaCommands.ACTION_LOGIN_SUCCESS);
     }
 
     @Override public void onLoginFailed(String reason) {
         Log.w(TAG, "Login failed: " + reason);
         updateNotification("Login failed");
-        broadcast(CongaCommands.ACTION_DISCONNECTED);
+        Intent intent = new Intent(CongaCommands.ACTION_LOGIN_FAILED);
+        intent.putExtra(CongaCommands.EXTRA_LOGIN_MSG, reason);
+        broadcaster.sendBroadcast(intent);
     }
 
     @Override public void onStatus(CongaMessage.StatusResponse status) {

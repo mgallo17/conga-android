@@ -38,12 +38,15 @@ public final class CongaCommands {
     public static final String ACTION_STATUS_UPDATE    = "com.mgallo17.conga.STATUS_UPDATE";
     public static final String ACTION_CONNECTED        = "com.mgallo17.conga.CONNECTED";
     public static final String ACTION_DISCONNECTED     = "com.mgallo17.conga.DISCONNECTED";
+    public static final String ACTION_LOGIN_SUCCESS    = "com.mgallo17.conga.LOGIN_SUCCESS";
+    public static final String ACTION_LOGIN_FAILED     = "com.mgallo17.conga.LOGIN_FAILED";
     public static final String EXTRA_STATE             = "state";
     public static final String EXTRA_BATTERY           = "battery";
     public static final String EXTRA_POS_X             = "pos_x";
     public static final String EXTRA_POS_Y             = "pos_y";
     public static final String EXTRA_CLEAN_TIME        = "clean_time";
     public static final String EXTRA_CLEAN_AREA        = "clean_area";
+    public static final String EXTRA_LOGIN_MSG         = "login_msg";
 
     // SharedPreferences keys
     public static final String PREFS_NAME     = "conga_prefs";
