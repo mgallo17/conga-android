@@ -2,75 +2,92 @@ package com.mgallo17.conga;
 
 import org.junit.Test;
 import static org.junit.Assert.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
- * Unit tests for CongaProtocol — frame building and parsing.
+ * Unit tests for CongaProtocol — real frame format from pcap.
  */
 public class CongaProtocolTest {
 
-    private final CongaProtocol protocol = new CongaProtocol();
-
     @Test
-    public void testPingFrameLength() {
-        byte[] frame = protocol.buildPing(0, 0);
-        // Ping has no payload → frame must be exactly 24 bytes (header only)
-        assertEquals(24, frame.length);
+    public void testFrameHasCorrectTotalLength() {
+        String json = "{\"test\":1}";
+        byte[] frame = CongaProtocol.buildFrame(CongaProtocol.MSG_LOGIN_REQ, json, 0, 0);
+        // total = 20 (header) + json.length + 28 (footer)
+        int expected = 20 + json.getBytes().length + 28;
+        assertEquals(expected, frame.length);
     }
 
     @Test
-    public void testFrameLengthFieldIsLittleEndian() {
-        byte[] frame = protocol.buildPing(0, 0);
-        // First 4 bytes = length in little-endian = 24 = 0x18 0x00 0x00 0x00
-        assertEquals(0x18, frame[0] & 0xFF);
-        assertEquals(0x00, frame[1] & 0xFF);
-        assertEquals(0x00, frame[2] & 0xFF);
-        assertEquals(0x00, frame[3] & 0xFF);
+    public void testHeaderPayloadLenField() {
+        String json = "{\"test\":1}";
+        byte[] frame = CongaProtocol.buildFrame(CongaProtocol.MSG_CMD_REQ, json, 0, 0);
+        // bytes [0:4] = json.length + 28 (footer length)
+        ByteBuffer buf = ByteBuffer.wrap(frame).order(ByteOrder.LITTLE_ENDIAN);
+        int payloadLen = buf.getInt();
+        assertEquals(json.getBytes().length + 28, payloadLen);
     }
 
     @Test
-    public void testPingOpcode() {
-        byte[] frame = protocol.buildPing(0, 0);
-        // Opcode at bytes 22-23 (little-endian) = 2005 = 0xD5 0x07
-        assertEquals(0xD5, frame[22] & 0xFF);
-        assertEquals(0x07, frame[23] & 0xFF);
+    public void testHeaderMsgType() {
+        String json = "{}";
+        byte[] frame = CongaProtocol.buildFrame(CongaProtocol.MSG_LOGIN_REQ, json, 0, 0);
+        ByteBuffer buf = ByteBuffer.wrap(frame).order(ByteOrder.LITTLE_ENDIAN);
+        buf.getInt(); // skip payloadLen
+        int msgType = buf.getShort() & 0xFFFF;
+        assertEquals(CongaProtocol.MSG_LOGIN_REQ, msgType);
     }
 
     @Test
-    public void testParseRoundTrip() {
-        byte[] payload = {0x01, 0x02, 0x03};
-        byte[] frame   = protocol.buildFrame(CongaCommands.OPCODE_COMMAND, 42, 99, payload);
-
-        CongaProtocol.ParsedFrame parsed = protocol.parseFrame(frame);
-
-        assertNotNull(parsed);
-        assertEquals(CongaCommands.OPCODE_COMMAND, parsed.opcode);
-        assertEquals(42, parsed.userId);
-        assertEquals(99, parsed.deviceId);
-        assertArrayEquals(payload, parsed.payload);
+    public void testFooterContent() {
+        String json = "{}";
+        byte[] frame = CongaProtocol.buildFrame(CongaProtocol.MSG_CMD_REQ, json, 0, 0);
+        // Footer starts at offset 20 + json.length
+        int footerOffset = 20 + json.getBytes().length;
+        // First byte of footer = 0x01
+        assertEquals(0x01, frame[footerOffset] & 0xFF);
+        // "Conga 1490 1590" starts at footerOffset + 8
+        String model = new String(frame, footerOffset + 8, 15);
+        assertEquals("Conga 1490 1590", model);
     }
 
     @Test
-    public void testReadFrameLength() {
-        byte[] header = {0x18, 0x00, 0x00, 0x00}; // 24 in little-endian
-        assertEquals(24, CongaProtocol.readFrameLength(header));
+    public void testExtractJson() {
+        String json = "{\"cmd\":0,\"value\":\"test\"}";
+        byte[] frame = CongaProtocol.buildFrame(CongaProtocol.MSG_CMD_REQ, json, 5, 3);
+        String extracted = CongaProtocol.extractJson(frame);
+        assertEquals(json, extracted);
+    }
+
+    @Test
+    public void testSeqFieldsInHeader() {
+        byte[] frame = CongaProtocol.buildFrame(CongaProtocol.MSG_CMD_REQ, "{}", 42, 99);
+        ByteBuffer buf = ByteBuffer.wrap(frame).order(ByteOrder.LITTLE_ENDIAN);
+        buf.getInt();            // payloadLen
+        buf.getShort();          // msgType
+        buf.getShort();          // flags 0xc8
+        buf.getInt();            // field8
+        int seqSend = buf.getInt();
+        int seqRecv = buf.getInt();
+        assertEquals(42, seqSend);
+        assertEquals(99, seqRecv);
     }
 
     @Test
     public void testMd5() {
         // MD5("password") = "5f4dcc3b5aa765d61d8327deb882cf99"
-        String hash = CongaProtocol.md5("password");
-        assertEquals("5f4dcc3b5aa765d61d8327deb882cf99", hash);
+        assertEquals("5f4dcc3b5aa765d61d8327deb882cf99", CongaProtocol.md5("password"));
     }
 
     @Test
-    public void testSequenceIncrements() {
-        byte[] f1 = protocol.buildPing(0, 0);
-        byte[] f2 = protocol.buildPing(0, 0);
-        // Sequence field is at bytes 16-21; first 4 bytes are the counter
-        int seq1 = (f1[16] & 0xFF) | ((f1[17] & 0xFF) << 8)
-                 | ((f1[18] & 0xFF) << 16) | ((f1[19] & 0xFF) << 24);
-        int seq2 = (f2[16] & 0xFF) | ((f2[17] & 0xFF) << 8)
-                 | ((f2[18] & 0xFF) << 16) | ((f2[19] & 0xFF) << 24);
-        assertEquals(1, seq2 - seq1);
+    public void testParseHeader() {
+        String json = "{\"test\":true}";
+        byte[] frame = CongaProtocol.buildFrame(CongaProtocol.MSG_STATUS_RSP, json, 1, 0);
+        int[] parsed = CongaProtocol.parseHeader(frame, 0);
+        assertNotNull(parsed);
+        assertEquals(CongaProtocol.MSG_STATUS_RSP, parsed[0]); // msgType
+        assertEquals(json.getBytes().length + 28, parsed[1]);  // payloadLen
+        assertEquals(frame.length, parsed[2]);                  // total frame length
     }
 }

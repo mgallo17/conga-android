@@ -2,9 +2,9 @@ package com.mgallo17.conga;
 
 public final class CongaCommands {
 
-    // Server
-    public static final String SERVER_HOST = "eu.inteli.cecotec.com";
-    public static final int    SERVER_PORT  = 4006;
+    // Server — real values from pcap capture
+    public static final String SERVER_HOST = "hc-s-eu.hctrobot.com";
+    public static final int    SERVER_PORT  = 20008;
 
     // OpCodes (little-endian on wire)
     public static final int OPCODE_PING         = 2005;
