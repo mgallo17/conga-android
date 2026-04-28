@@ -83,7 +83,7 @@ public class HctApiClient {
         conn.setConnectTimeout(10_000);
         conn.setReadTimeout(15_000);
         conn.setDoOutput(true);
-        conn.setInstanceFollowRedirects(false);
+        conn.setInstanceFollowRedirects(true);
 
         byte[] body = params.getBytes(StandardCharsets.UTF_8);
         conn.setRequestProperty("Content-Length", String.valueOf(body.length));

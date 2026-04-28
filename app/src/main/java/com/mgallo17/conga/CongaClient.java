@@ -122,7 +122,8 @@ public class CongaClient {
         JSONObject ctrl = new JSONObject();
         JSONObject val  = new JSONObject();
         try {
-            ctrl.put("targetId",   robotId);
+            // control.targetId = phone device identifier (not robotId)
+            ctrl.put("targetId",   deviceId);
             ctrl.put("targetType", "1");
 
             val.put("appKey",     HctApiClient.APP_KEY);
@@ -189,16 +190,14 @@ public class CongaClient {
                 Log.w(TAG, "Bad header, skipping");
                 continue;
             }
-            int msgType    = parsed[0];
-            int payloadLen = parsed[1];
+            int msgType = parsed[0];
+            int jsonLen = parsed[1]; // totalLen - 20
 
-            // Read payload (json + footer)
-            byte[] payload = new byte[payloadLen];
-            readFully(payload, 0, payloadLen);
-
-            // Extract JSON (strip footer 28 bytes)
-            int jsonLen = payloadLen - 28;
             if (jsonLen <= 0) continue;
+
+            // Read JSON payload
+            byte[] payload = new byte[jsonLen];
+            readFully(payload, 0, jsonLen);
             String json = new String(payload, 0, jsonLen, java.nio.charset.StandardCharsets.UTF_8);
             Log.d(TAG, "RX type=0x" + Integer.toHexString(msgType) + " json=" + json);
 
