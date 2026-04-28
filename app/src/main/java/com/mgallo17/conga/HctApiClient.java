@@ -25,12 +25,14 @@ import java.nio.charset.StandardCharsets;
 public class HctApiClient {
 
     private static final String TAG        = "HctApiClient";
-    private static final String BASE_URL   = "https://hc-app-eu.hctrobot.com/baole-web/";
+    // Real URL from plist: Jdomain=https://hc-app-eu.hctrobot.com JPort=8080
+    // Mobile API runs on HTTP port 8080, not HTTPS 443 (which is BMS admin)
+    private static final String BASE_URL   = "http://hc-app-eu.hctrobot.com:8080/baole-web/";
     private static final String COMPANY_ID = "35";
     static final String APP_KEY   = "7ebc52168d6242c4868b27907c797865";
 
     public interface LoginCallback {
-        void onSuccess(String token, String userId, String robotId, String authCode);
+        void onSuccess(String token, String userId, String robotId, String authCode, String deviceId);
         void onFailure(String reason);
     }
 
@@ -61,7 +63,7 @@ public class HctApiClient {
                     String userId   = data.optString("userId", "");
                     String robotId  = data.optString("robotId", "");
                     String authCode = data.optString("authCode", "");
-                    mainHandler.post(() -> cb.onSuccess(token, userId, robotId, authCode));
+                    mainHandler.post(() -> cb.onSuccess(token, userId, robotId, authCode, imei));
                 } else {
                     String msg = json.optString("msg", "Login failed (code " + code + ")");
                     mainHandler.post(() -> cb.onFailure(msg));
@@ -78,12 +80,11 @@ public class HctApiClient {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-        conn.setRequestProperty("X-Requested-With", "XMLHttpRequest");
         conn.setRequestProperty("User-Agent", "okhttp/3.12.0");
-        conn.setConnectTimeout(10_000);
-        conn.setReadTimeout(15_000);
+        conn.setConnectTimeout(15_000);
+        conn.setReadTimeout(20_000);
         conn.setDoOutput(true);
-        conn.setInstanceFollowRedirects(true);
+        conn.setInstanceFollowRedirects(false);
 
         byte[] body = params.getBytes(StandardCharsets.UTF_8);
         conn.setRequestProperty("Content-Length", String.valueOf(body.length));

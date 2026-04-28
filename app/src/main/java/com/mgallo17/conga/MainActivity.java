@@ -38,7 +38,7 @@ public class MainActivity extends AppCompatActivity implements CongaClient.Liste
         userId   = getIntent().getStringExtra(CongaCommands.PREF_USER_ID);
         robotId  = getIntent().getStringExtra("robot_id");
         authCode = getIntent().getStringExtra("auth_code");
-        deviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+        deviceId = getIntent().getStringExtra("device_id");
 
         // Fallback to prefs
         if (token == null || token.isEmpty()) {
@@ -47,6 +47,11 @@ public class MainActivity extends AppCompatActivity implements CongaClient.Liste
             userId   = p.getString(CongaCommands.PREF_USER_ID, "");
             robotId  = p.getString("robot_id", "");
             authCode = p.getString("auth_code", "");
+            deviceId = p.getString("device_id", "");
+        }
+        // Fallback deviceId to Android ID if not set
+        if (deviceId == null || deviceId.isEmpty()) {
+            deviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
         }
 
         btnStart.setOnClickListener(v -> {

@@ -60,6 +60,16 @@
         android:textSize="16sp"
         android:backgroundTint="#1565C0"
         android:textColor="#FFFFFF"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/btnManualLogin"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Manual Setup (Advanced)"
+        android:textSize="13sp"
+        android:backgroundTint="#455A64"
+        android:textColor="#FFFFFF"
         android:layout_marginBottom="16dp" />
 
     <ProgressBar
