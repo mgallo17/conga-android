@@ -1,167 +1,146 @@
 package com.mgallo17.conga;
 
-import android.content.BroadcastReceiver;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.IBinder;
-import android.widget.ArrayAdapter;
+import android.provider.Settings;
+import android.view.View;
 import android.widget.Button;
-import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements CongaClient.Listener {
 
-    private CongaService    service;
-    private boolean         bound = false;
-    private RobotPathView   pathView;
-    private TextView        tvStatus, tvBattery, tvCleanTime, tvCleanArea;
-    private Button          btnStart, btnStop, btnHome;
-    private Spinner         spinnerMode;
+    private TextView tvStatus, tvBattery, tvState, tvMode, tvVersion, tvError;
+    private Button   btnStart, btnHome, btnStatus;
 
-    private final String[] MODES = {"Auto", "Spiral", "Edge", "Spot"};
-    private final int[]    MODE_CMDS = {
-            CongaCommands.CMD_AUTO,
-            CongaCommands.CMD_SPIRAL,
-            CongaCommands.CMD_EDGE,
-            CongaCommands.CMD_SPOT
-    };
-
-    private final ServiceConnection connection = new ServiceConnection() {
-        @Override public void onServiceConnected(ComponentName name, IBinder binder) {
-            CongaService.LocalBinder lb = (CongaService.LocalBinder) binder;
-            service = lb.getService();
-            bound   = true;
-
-            // Connect with credentials passed from LoginActivity
-            Intent src = getIntent();
-            String email  = src.getStringExtra(CongaCommands.PREF_EMAIL);
-            String pwd    = src.getStringExtra(CongaCommands.PREF_PASSWORD);
-            String devId  = getSharedPreferences(CongaCommands.PREFS_NAME, MODE_PRIVATE)
-                    .getString(CongaCommands.PREF_DEVICE_ID, "0");
-            service.connect(email, pwd, devId);
-        }
-        @Override public void onServiceDisconnected(ComponentName name) {
-            bound = false;
-        }
-    };
-
-    private final BroadcastReceiver receiver = new BroadcastReceiver() {
-        @Override public void onReceive(Context ctx, Intent intent) {
-            String action = intent.getAction();
-            if (action == null) return;
-            switch (action) {
-                case CongaCommands.ACTION_CONNECTED:
-                    tvStatus.setText("● Connected");
-                    tvStatus.setTextColor(0xFF4CAF50);
-                    break;
-                case CongaCommands.ACTION_DISCONNECTED:
-                    tvStatus.setText("● Disconnected");
-                    tvStatus.setTextColor(0xFFE53935);
-                    break;
-                case CongaCommands.ACTION_STATUS_UPDATE:
-                    handleStatus(intent);
-                    break;
-            }
-        }
-    };
+    private CongaClient client;
+    private String token, userId, robotId, authCode, deviceId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        tvStatus    = findViewById(R.id.tvStatus);
-        tvBattery   = findViewById(R.id.tvBattery);
-        tvCleanTime = findViewById(R.id.tvCleanTime);
-        tvCleanArea = findViewById(R.id.tvCleanArea);
-        pathView    = findViewById(R.id.robotPathView);
-        btnStart    = findViewById(R.id.btnStart);
-        btnStop     = findViewById(R.id.btnStop);
-        btnHome     = findViewById(R.id.btnHome);
-        spinnerMode = findViewById(R.id.spinnerMode);
+        tvStatus  = findViewById(R.id.tvConnectionStatus);
+        tvBattery = findViewById(R.id.tvBattery);
+        tvState   = findViewById(R.id.tvRobotState);
+        tvMode    = findViewById(R.id.tvMode);
+        tvVersion = findViewById(R.id.tvVersion);
+        tvError   = findViewById(R.id.tvError);
+        btnStart  = findViewById(R.id.btnStart);
+        btnHome   = findViewById(R.id.btnHome);
+        btnStatus = findViewById(R.id.btnStatus);
 
-        spinnerMode.setAdapter(new ArrayAdapter<>(
-                this, android.R.layout.simple_spinner_dropdown_item, MODES));
+        // Get credentials from intent or prefs
+        token    = getIntent().getStringExtra(CongaCommands.PREF_SESSION_ID);
+        userId   = getIntent().getStringExtra(CongaCommands.PREF_USER_ID);
+        robotId  = getIntent().getStringExtra("robot_id");
+        authCode = getIntent().getStringExtra("auth_code");
+        deviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
 
-        btnStart.setOnClickListener(v -> {
-            if (!bound) return;
-            int modeCmd = MODE_CMDS[spinnerMode.getSelectedItemPosition()];
-            service.sendCommand(modeCmd);
-            pathView.startTracking();
-        });
-
-        btnStop.setOnClickListener(v -> {
-            if (bound) service.sendCommand(CongaCommands.CMD_STOP);
-        });
-
-        btnHome.setOnClickListener(v -> {
-            if (bound) service.sendCommand(CongaCommands.CMD_HOME);
-        });
-
-        findViewById(R.id.btnSchedule).setOnClickListener(v ->
-                startActivity(new Intent(this, ScheduleActivity.class)));
-
-        // Start & bind service
-        Intent svcIntent = new Intent(this, CongaService.class);
-        startForegroundService(svcIntent);
-        bindService(svcIntent, connection, BIND_AUTO_CREATE);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(CongaCommands.ACTION_CONNECTED);
-        filter.addAction(CongaCommands.ACTION_DISCONNECTED);
-        filter.addAction(CongaCommands.ACTION_STATUS_UPDATE);
-        LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter);
-    }
-
-    @Override
-    protected void onPause() {
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(receiver);
-        super.onPause();
-    }
-
-    @Override
-    protected void onDestroy() {
-        if (bound) { unbindService(connection); bound = false; }
-        super.onDestroy();
-    }
-
-    private void handleStatus(Intent intent) {
-        int   state     = intent.getIntExtra(CongaCommands.EXTRA_STATE, 0);
-        int   battery   = intent.getIntExtra(CongaCommands.EXTRA_BATTERY, 0);
-        float posX      = intent.getFloatExtra(CongaCommands.EXTRA_POS_X, 0f);
-        float posY      = intent.getFloatExtra(CongaCommands.EXTRA_POS_Y, 0f);
-        int   cleanTime = intent.getIntExtra(CongaCommands.EXTRA_CLEAN_TIME, 0);
-        int   cleanArea = intent.getIntExtra(CongaCommands.EXTRA_CLEAN_AREA, 0);
-
-        String stateStr;
-        switch (state) {
-            case CongaCommands.STATE_CLEANING:  stateStr = "🧹 Cleaning";  break;
-            case CongaCommands.STATE_RETURNING: stateStr = "🏠 Returning"; break;
-            case CongaCommands.STATE_CHARGING:  stateStr = "🔋 Charging";  break;
-            case CongaCommands.STATE_ERROR:     stateStr = "⚠️ Error";      break;
-            default:                            stateStr = "💤 Idle";       break;
+        // Fallback to prefs
+        if (token == null || token.isEmpty()) {
+            SharedPreferences p = getSharedPreferences(CongaCommands.PREFS_NAME, MODE_PRIVATE);
+            token    = p.getString(CongaCommands.PREF_SESSION_ID, "");
+            userId   = p.getString(CongaCommands.PREF_USER_ID, "");
+            robotId  = p.getString("robot_id", "");
+            authCode = p.getString("auth_code", "");
         }
 
-        tvStatus.setText(stateStr);
-        tvBattery.setText("Battery: " + battery + "%");
-        tvCleanTime.setText(formatTime(cleanTime));
-        tvCleanArea.setText(cleanArea + " cm²");
+        btnStart.setOnClickListener(v -> {
+            if (client != null) client.sendCmd(CongaProtocol.CMD_START_CLEAN);
+        });
+        btnHome.setOnClickListener(v -> {
+            if (client != null) client.sendCmd(CongaProtocol.CMD_GO_HOME);
+        });
+        btnStatus.setOnClickListener(v -> {
+            if (client != null) client.sendCmd(CongaProtocol.CMD_GET_STATUS);
+        });
 
-        pathView.addPoint(posX, posY);
+        setUiState("Connecting…", false);
+        connectSocket();
     }
 
-    private String formatTime(int seconds) {
-        return String.format("%02d:%02d", seconds / 60, seconds % 60);
+    private void connectSocket() {
+        client = new CongaClient(this);
+        client.connect(token, userId, robotId, authCode, deviceId);
+    }
+
+    // --- CongaClient.Listener ---
+
+    @Override public void onConnected() {
+        runOnUiThread(() -> tvStatus.setText("🔌 Connected — logging in…"));
+    }
+
+    @Override public void onLoginSuccess() {
+        runOnUiThread(() -> {
+            tvStatus.setText("✅ Connected to Conga");
+            setUiState("Connected", true);
+        });
+    }
+
+    @Override public void onLoginFailed(String reason) {
+        runOnUiThread(() -> {
+            tvStatus.setText("❌ Login failed: " + reason);
+            Toast.makeText(this, "Login failed: " + reason, Toast.LENGTH_LONG).show();
+        });
+    }
+
+    @Override public void onStatusUpdate(CongaClient.RobotStatus status) {
+        runOnUiThread(() -> {
+            tvBattery.setText("🔋 Battery: " + status.battery + "%");
+            tvState.setText("⚙️ State: " + status.workStateLabel());
+            tvMode.setText("🔄 Mode: " + (status.workMode == 0 ? "Normal" : "Smart"));
+            tvError.setText(status.error != 0 ? "⚠️ Error: " + status.error : "");
+            tvError.setVisibility(status.error != 0 ? View.VISIBLE : View.GONE);
+            tvVersion.setText("📱 v" + status.version);
+
+            // Update authCode if refreshed
+            if (status.authCode != null && !status.authCode.isEmpty()) {
+                authCode = status.authCode;
+            }
+
+            // Update button state based on workState
+            boolean cleaning = (status.workState == 1 || status.workState == 2);
+            btnStart.setText(cleaning ? "⏹ Stop" : "▶️ Start");
+            btnStart.setOnClickListener(v -> {
+                if (client != null) {
+                    client.sendCmd(cleaning
+                            ? CongaProtocol.CMD_GO_HOME
+                            : CongaProtocol.CMD_START_CLEAN);
+                }
+            });
+        });
+    }
+
+    @Override public void onDisconnected(String reason) {
+        runOnUiThread(() -> {
+            tvStatus.setText("🔴 Disconnected: " + reason);
+            setUiState("Disconnected", false);
+        });
+    }
+
+    @Override public void onError(String error) {
+        runOnUiThread(() -> Toast.makeText(this, error, Toast.LENGTH_SHORT).show());
+    }
+
+    private void setUiState(String statusText, boolean enabled) {
+        tvStatus.setText(statusText);
+        btnStart.setEnabled(enabled);
+        btnHome.setEnabled(enabled);
+        btnStatus.setEnabled(enabled);
+        if (!enabled) {
+            tvBattery.setText("🔋 Battery: --");
+            tvState.setText("⚙️ State: --");
+            tvMode.setText("🔄 Mode: --");
+            tvVersion.setText("");
+        }
+    }
+
+    @Override protected void onDestroy() {
+        super.onDestroy();
+        if (client != null) client.disconnect();
     }
 }

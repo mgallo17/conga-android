@@ -1,135 +1,125 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="#FFFFFF">
+    android:background="#121212">
 
-    <!-- Status bar -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:orientation="horizontal"
-        android:background="#1565C0"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:gravity="center_vertical">
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
 
+        <!-- Title -->
         <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="0dp"
+            android:text="🤖 Conga Controller"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="● Connecting…"
             android:textColor="#FFFFFF"
+            android:textSize="22sp"
             android:textStyle="bold"
-            android:textSize="14sp" />
+            android:gravity="center"
+            android:layout_marginBottom="24dp"/>
 
+        <!-- Connection Status -->
         <TextView
-            android:id="@+id/tvBattery"
-            android:layout_width="wrap_content"
+            android:id="@+id/tvConnectionStatus"
+            android:text="Connecting…"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="🔋 --%"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
-    </LinearLayout>
+            android:textColor="#90CAF9"
+            android:textSize="16sp"
+            android:gravity="center"
+            android:layout_marginBottom="32dp"/>
 
-    <!-- Stats row -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="40dp"
-        android:orientation="horizontal"
-        android:background="#E3F2FD"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/tvCleanTime"
-            android:layout_width="0dp"
+        <!-- Stats Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="⏱ 00:00"
-            android:textColor="#000000"
-            android:textSize="13sp"
-            android:gravity="center" />
+            android:orientation="vertical"
+            android:background="#1E1E1E"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp">
 
-        <TextView
-            android:id="@+id/tvCleanArea"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="📐 0 m²"
-            android:textColor="#000000"
-            android:textSize="13sp"
-            android:gravity="center" />
-    </LinearLayout>
+            <TextView
+                android:id="@+id/tvBattery"
+                android:text="🔋 Battery: --"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:layout_marginBottom="8dp"/>
 
-    <!-- Path visualisation -->
-    <com.mgallo17.conga.RobotPathView
-        android:id="@+id/robotPathView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+            <TextView
+                android:id="@+id/tvRobotState"
+                android:text="⚙️ State: --"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:layout_marginBottom="8dp"/>
 
-    <!-- Mode spinner -->
-    <Spinner
-        android:id="@+id/spinnerMode"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp" />
+            <TextView
+                android:id="@+id/tvMode"
+                android:text="🔄 Mode: --"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:layout_marginBottom="8dp"/>
 
-    <!-- Control buttons -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="64dp"
-        android:orientation="horizontal"
-        android:padding="8dp">
+            <TextView
+                android:id="@+id/tvVersion"
+                android:text=""
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#AAAAAA"
+                android:textSize="13sp"
+                android:layout_marginBottom="4dp"/>
 
+            <TextView
+                android:id="@+id/tvError"
+                android:text=""
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#EF5350"
+                android:textSize="14sp"
+                android:visibility="gone"/>
+
+        </LinearLayout>
+
+        <!-- Control Buttons -->
         <Button
             android:id="@+id/btnStart"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:layout_margin="4dp"
-            android:text="▶ START"
+            android:text="▶️ Start"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:backgroundTint="#1976D2"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#4CAF50" />
-
-        <Button
-            android:id="@+id/btnStop"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:layout_margin="4dp"
-            android:text="⏹ STOP"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#E53935" />
+            android:textSize="16sp"
+            android:layout_marginBottom="12dp"
+            android:enabled="false"/>
 
         <Button
             android:id="@+id/btnHome"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:layout_margin="4dp"
-            android:text="🏠 HOME"
+            android:text="🏠 Go Home"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:backgroundTint="#388E3C"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#1565C0" />
+            android:textSize="16sp"
+            android:layout_marginBottom="12dp"
+            android:enabled="false"/>
+
+        <Button
+            android:id="@+id/btnStatus"
+            android:text="🔄 Refresh Status"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:backgroundTint="#424242"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:enabled="false"/>
+
     </LinearLayout>
-
-    <!-- Schedule button -->
-    <Button
-        android:id="@+id/btnSchedule"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="12dp"
-        android:text="📅 SCHEDULE"
-        android:textColor="#1565C0"
-        android:backgroundTint="#E3F2FD" />
-
-</LinearLayout>
+</ScrollView>
