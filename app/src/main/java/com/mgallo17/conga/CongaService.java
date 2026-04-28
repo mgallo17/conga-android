@@ -6,11 +6,14 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.os.Binder;
+import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.ServiceCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 public class CongaService extends Service implements CongaClient.Listener {
@@ -38,7 +41,13 @@ public class CongaService extends Service implements CongaClient.Listener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        startForeground(NOTIFICATION_ID, buildNotification("Connecting…"));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID,
+                    buildNotification("Connecting…"),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification("Connecting…"));
+        }
         return START_STICKY;
     }
 
