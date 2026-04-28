@@ -1,32 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/white">
+    android:background="#FFFFFF">
 
     <!-- Status bar -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:orientation="horizontal"
         android:background="#1565C0"
-        android:padding="12dp">
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:gravity="center_vertical">
+
         <TextView
             android:id="@+id/tvStatus"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="● Connecting…"
-            android:textColor="@color/white"
-            android:textStyle="bold" />
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
         <TextView
             android:id="@+id/tvBattery"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="🔋 --%"
-            android:textColor="@color/white" />
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- Stats row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:background="#E3F2FD"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tvCleanTime"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="⏱ 00:00"
+            android:textColor="#000000"
+            android:textSize="13sp"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/tvCleanArea"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="📐 0 m²"
+            android:textColor="#000000"
+            android:textSize="13sp"
+            android:gravity="center" />
     </LinearLayout>
 
     <!-- Path visualisation -->
@@ -34,75 +70,54 @@
         android:id="@+id/robotPathView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_margin="8dp" />
+        android:layout_weight="1" />
 
-    <!-- Stats row -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="8dp">
-        <TextView
-            android:id="@+id/tvCleanTime"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="⏱ 00:00"
-            android:gravity="center" />
-        <TextView
-            android:id="@+id/tvCleanArea"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="📐 0 cm²"
-            android:gravity="center" />
-    </LinearLayout>
-
-    <!-- Mode selector -->
+    <!-- Mode spinner -->
     <Spinner
         android:id="@+id/spinnerMode"
         android:layout_width="match_parent"
         android:layout_height="48dp"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="4dp" />
 
     <!-- Control buttons -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="64dp"
         android:orientation="horizontal"
         android:padding="8dp">
 
         <Button
             android:id="@+id/btnStart"
             android:layout_width="0dp"
-            android:layout_height="56dp"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_margin="4dp"
-            android:text="▶ Start"
-            android:backgroundTint="#4CAF50"
-            style="@style/Widget.MaterialComponents.Button" />
+            android:text="▶ START"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#4CAF50" />
 
         <Button
             android:id="@+id/btnStop"
             android:layout_width="0dp"
-            android:layout_height="56dp"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_margin="4dp"
-            android:text="⏹ Stop"
-            android:backgroundTint="#E53935"
-            style="@style/Widget.MaterialComponents.Button" />
+            android:text="⏹ STOP"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#E53935" />
 
         <Button
             android:id="@+id/btnHome"
             android:layout_width="0dp"
-            android:layout_height="56dp"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_margin="4dp"
-            android:text="🏠 Home"
-            android:backgroundTint="#1565C0"
-            style="@style/Widget.MaterialComponents.Button" />
+            android:text="🏠 HOME"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#1565C0" />
     </LinearLayout>
 
     <!-- Schedule button -->
@@ -110,9 +125,11 @@
         android:id="@+id/btnSchedule"
         android:layout_width="match_parent"
         android:layout_height="48dp"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginBottom="16dp"
-        android:text="📅 Schedule"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="12dp"
+        android:text="📅 SCHEDULE"
+        android:textColor="#1565C0"
+        android:backgroundTint="#E3F2FD" />
 
 </LinearLayout>
