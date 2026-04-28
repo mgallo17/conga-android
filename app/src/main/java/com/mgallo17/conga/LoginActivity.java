@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -58,7 +59,10 @@ public class LoginActivity extends AppCompatActivity {
 
             setLoading(true, "Connecting to Cecotec servers…");
 
-            apiClient.login(email, pwd, new HctApiClient.LoginCallback() {
+            // Android ID como identificador único do dispositivo
+            String deviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+
+            apiClient.login(email, pwd, deviceId, new HctApiClient.LoginCallback() {
                 @Override
                 public void onSuccess(String sessionId, String userId) {
                     // Save credentials

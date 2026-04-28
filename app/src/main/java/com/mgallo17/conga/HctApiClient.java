@@ -20,7 +20,10 @@ import java.nio.charset.StandardCharsets;
 public class HctApiClient {
 
     private static final String TAG      = "HctApiClient";
-    private static final String BASE_URL = "https://com-app.hctrobot.com/baole-web/";
+    // Servidor EU — extraído do BuildConfig da app oficial
+    private static final String BASE_URL = "https://hc-app-eu.hctrobot.com/baole-web/";
+    private static final String COMPANY_ID = "35";
+    private static final String APP_KEY  = "7ebc52168d6242c4868b27907c797865";
 
     public interface LoginCallback {
         void onSuccess(String sessionId, String userId);
@@ -38,13 +41,16 @@ public class HctApiClient {
     // Login
     // ---------------------------------------------------------------
 
-    public void login(String email, String password, LoginCallback cb) {
+    public void login(String email, String password, String imei, LoginCallback cb) {
         new Thread(() -> {
             try {
+                // Formato real extraído do LoginApi.login(username, password, imei, callback)
+                // O servidor EU usa o endpoint baole-web com companyId=35
                 String params = "loginName=" + encode(email)
                         + "&loginPassword=" + encode(CongaProtocol.md5(password))
-                        + "&loginType=1"
-                        + "&appType=2"; // Android
+                        + "&imei=" + encode(imei)
+                        + "&companyId=" + COMPANY_ID
+                        + "&appKey=" + APP_KEY;
 
                 String response = post("personal/getAppToken.do", params);
                 Log.d(TAG, "Login response: " + response);
