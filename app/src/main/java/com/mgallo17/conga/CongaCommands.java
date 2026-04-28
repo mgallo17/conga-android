@@ -49,12 +49,15 @@ public final class CongaCommands {
     public static final String EXTRA_LOGIN_MSG         = "login_msg";
 
     // SharedPreferences keys
-    public static final String PREFS_NAME     = "conga_prefs";
-    public static final String PREF_EMAIL     = "email";
-    public static final String PREF_PASSWORD  = "password";
-    public static final String PREF_SESSION_ID= "session_id";
-    public static final String PREF_USER_ID   = "user_id";
-    public static final String PREF_DEVICE_ID = "device_id";
+    public static final String PREFS_NAME      = "conga_prefs";
+    public static final String PREF_EMAIL      = "email";
+    public static final String PREF_PASSWORD   = "password";
+    public static final String PREF_SESSION_ID = "session_id";
+    public static final String PREF_USER_ID    = "user_id";
+    public static final String PREF_DEVICE_ID  = "device_id";
+    public static final String PREF_LOCAL_MODE = "local_mode";
+    public static final String PREF_ROBOT_IP   = "robot_ip";
+    public static final String PREF_ROBOT_PORT = "robot_port";
 
     private CongaCommands() {}
 }

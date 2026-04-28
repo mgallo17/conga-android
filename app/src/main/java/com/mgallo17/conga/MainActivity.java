@@ -1,9 +1,11 @@
 package com.mgallo17.conga;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.view.View;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -41,15 +43,14 @@ public class MainActivity extends AppCompatActivity implements CongaClient.Liste
         deviceId = getIntent().getStringExtra("device_id");
 
         // Fallback to prefs
+        SharedPreferences p = getSharedPreferences(CongaCommands.PREFS_NAME, MODE_PRIVATE);
         if (token == null || token.isEmpty()) {
-            SharedPreferences p = getSharedPreferences(CongaCommands.PREFS_NAME, MODE_PRIVATE);
             token    = p.getString(CongaCommands.PREF_SESSION_ID, "");
             userId   = p.getString(CongaCommands.PREF_USER_ID, "");
             robotId  = p.getString("robot_id", "");
             authCode = p.getString("auth_code", "");
             deviceId = p.getString("device_id", "");
         }
-        // Fallback deviceId to Android ID if not set
         if (deviceId == null || deviceId.isEmpty()) {
             deviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
         }
@@ -68,9 +69,44 @@ public class MainActivity extends AppCompatActivity implements CongaClient.Liste
         connectSocket();
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        menu.add(0, 1, 0, "⚙️ Settings");
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == 1) {
+            startActivity(new Intent(this, SettingsActivity.class));
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Reconnect if settings changed
+        if (client != null) client.disconnect();
+        connectSocket();
+    }
+
     private void connectSocket() {
+        SharedPreferences p = getSharedPreferences(CongaCommands.PREFS_NAME, MODE_PRIVATE);
+        boolean localMode   = p.getBoolean(CongaCommands.PREF_LOCAL_MODE, false);
         client = new CongaClient(this);
-        client.connect(token, userId, robotId, authCode, deviceId);
+
+        if (localMode) {
+            String ip   = p.getString(CongaCommands.PREF_ROBOT_IP, CongaClient.DEFAULT_LOCAL_IP);
+            int    port = p.getInt(CongaCommands.PREF_ROBOT_PORT, CongaClient.DEFAULT_LOCAL_PORT);
+            String devId = p.getString("device_id", "86A4CF12C80809");
+            String auth  = p.getString("auth_code", authCode);
+            tvStatus.setText("🏠 Local mode — " + ip);
+            client.connectLocal(ip, port, devId, auth);
+        } else {
+            client.connect(token, userId, robotId, authCode, deviceId);
+        }
     }
 
     // --- CongaClient.Listener ---

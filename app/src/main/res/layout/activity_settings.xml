@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⚙️ Connection Settings"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#000000"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Mode selection -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connection Mode"
+            android:textStyle="bold"
+            android:textColor="#333333"
+            android:textSize="15sp"
+            android:layout_marginBottom="8dp" />
+
+        <RadioGroup
+            android:id="@+id/rgMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp">
+
+            <RadioButton
+                android:id="@+id/rbCloud"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="☁️  Cloud (requires token from iOS app)"
+                android:textSize="14sp"
+                android:textColor="#333333"
+                android:layout_marginBottom="8dp" />
+
+            <RadioButton
+                android:id="@+id/rbLocal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🏠  Local Wi-Fi (no token needed — recommended)"
+                android:textSize="14sp"
+                android:textColor="#2E7D32" />
+        </RadioGroup>
+
+        <!-- Local mode fields -->
+        <LinearLayout
+            android:id="@+id/layoutLocalFields"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#F1F8E9"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🤖 Robot IP Address"
+                android:textStyle="bold"
+                android:textColor="#1B5E20"
+                android:layout_marginBottom="4dp" />
+            <EditText
+                android:id="@+id/etRobotIp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="192.168.1.201"
+                android:inputType="text"
+                android:textSize="15sp"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Port"
+                android:textStyle="bold"
+                android:textColor="#1B5E20"
+                android:layout_marginBottom="4dp" />
+            <EditText
+                android:id="@+id/etRobotPort"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="8888"
+                android:inputType="number"
+                android:textSize="15sp"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Device ID (robot, e.g. 86A4CF12C80809)"
+                android:textStyle="bold"
+                android:textColor="#1B5E20"
+                android:layout_marginBottom="4dp" />
+            <EditText
+                android:id="@+id/etDeviceId"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="86A4CF12C80809"
+                android:inputType="text"
+                android:textSize="14sp"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Auth Code"
+                android:textStyle="bold"
+                android:textColor="#1B5E20"
+                android:layout_marginBottom="4dp" />
+            <EditText
+                android:id="@+id/etAuthCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="1652660"
+                android:inputType="text"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="SAVE &amp; RECONNECT"
+            android:textSize="15sp"
+            android:backgroundTint="#1565C0"
+            android:textColor="#FFFFFF" />
+
+    </LinearLayout>
+</ScrollView>

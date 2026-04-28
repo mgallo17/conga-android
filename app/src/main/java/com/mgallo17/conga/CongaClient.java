@@ -26,10 +26,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CongaClient {
 
     private static final String TAG  = "CongaClient";
-    private static final String HOST = "hc-s-eu.hctrobot.com";
-    private static final int    PORT = 20008;
+
+    // Cloud server
+    private static final String CLOUD_HOST = "hc-s-eu.hctrobot.com";
+    private static final int    CLOUD_PORT = 20008;
+
+    // Local default (overridden from prefs/settings)
+    public  static final String DEFAULT_LOCAL_IP   = "192.168.1.201";
+    public  static final int    DEFAULT_LOCAL_PORT  = 8888;
 
     private static final String DEVICE_TYPE = "3"; // Android
+
+    // Mode
+    public enum Mode { CLOUD, LOCAL }
+    private Mode mode = Mode.CLOUD;
 
     public interface Listener {
         void onConnected();
@@ -87,35 +97,63 @@ public class CongaClient {
         this.listener = listener;
     }
 
-    // Connect and login
+    // Connect in CLOUD mode (requires token + credentials)
     public void connect(String token, String userId, String robotId,
                         String authCode, String deviceId) {
-        this.token        = token;
-        this.userId       = userId;
-        this.robotId      = robotId;
-        this.authCode     = authCode;
-        this.deviceId     = deviceId;
-        // robotDeviceId = the robot's hardware ID (used in targetId for commands)
-        // The robotId from plist is the UUID; the deviceId of the robot is "86A4CF12C80809"
-        // We'll update it from status responses; default to authCode-based discovery
-        this.robotDeviceId = robotId; // overridden from status push
+        this.mode          = Mode.CLOUD;
+        this.token         = token;
+        this.userId        = userId;
+        this.robotId       = robotId;
+        this.authCode      = authCode;
+        this.deviceId      = deviceId;
+        this.robotDeviceId = robotId;
+        new Thread(this::runSocket).start();
+    }
 
+    // Connect in LOCAL mode (direct LAN, no token needed)
+    public void connectLocal(String robotIp, int robotPort,
+                             String robotDeviceId, String authCode) {
+        this.mode          = Mode.LOCAL;
+        this.robotIp       = robotIp;
+        this.robotPort     = robotPort;
+        this.robotDeviceId = robotDeviceId;
+        this.authCode      = authCode;
+        // not needed in local mode
+        this.token  = "";
+        this.userId = "";
+        this.deviceId = "";
         new Thread(this::runSocket).start();
     }
 
     private void runSocket() {
         try {
-            Log.d(TAG, "Connecting to " + HOST + ":" + PORT);
+            String host;
+            int    port;
+            if (mode == Mode.LOCAL) {
+                host = robotIp;
+                port = robotPort;
+                Log.d(TAG, "LOCAL mode — connecting to " + host + ":" + port);
+            } else {
+                host = CLOUD_HOST;
+                port = CLOUD_PORT;
+                Log.d(TAG, "CLOUD mode — connecting to " + host + ":" + port);
+            }
+
             socket = new Socket();
-            socket.connect(new InetSocketAddress(HOST, PORT), 10_000);
-            socket.setSoTimeout(60_000);
+            socket.connect(new InetSocketAddress(host, port), 10_000);
+            socket.setSoTimeout(90_000);
             socket.setKeepAlive(true);
             out = socket.getOutputStream();
             in  = socket.getInputStream();
             running = true;
             listener.onConnected();
 
-            sendLoginReq();
+            if (mode == Mode.LOCAL) {
+                // Local: no login needed — just request status immediately
+                sendCmd(CongaProtocol.CMD_GET_STATUS);
+            } else {
+                sendLoginReq();
+            }
 
             // Keepalive: send getStatus every 30s
             new Thread(this::keepAliveLoop).start();
@@ -237,6 +275,7 @@ public class CongaClient {
             JSONObject obj = new JSONObject(json);
             switch (msgType) {
                 case CongaProtocol.MSG_LOGIN_RSP: {
+                    // Only relevant in CLOUD mode
                     int result = obj.optInt("result", -1);
                     if (result == 0) {
                         listener.onLoginSuccess();
