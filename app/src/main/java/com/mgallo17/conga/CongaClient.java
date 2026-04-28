@@ -74,9 +74,12 @@ public class CongaClient {
     // Session state
     private String userId;
     private String token;
-    private String robotId;
+    private String robotId;      // UUID (for reference)
     private String authCode;
-    private String deviceId;
+    private String deviceId;     // phone device ID
+    private String robotDeviceId; // robot's device ID (targetId in commands)
+    private String robotIp   = "192.168.1.201";
+    private int    robotPort = 8888;
     private final AtomicInteger seqSend = new AtomicInteger(0);
     private volatile int seqRecv = 0;
 
@@ -87,11 +90,15 @@ public class CongaClient {
     // Connect and login
     public void connect(String token, String userId, String robotId,
                         String authCode, String deviceId) {
-        this.token    = token;
-        this.userId   = userId;
-        this.robotId  = robotId;
-        this.authCode = authCode;
-        this.deviceId = deviceId;
+        this.token        = token;
+        this.userId       = userId;
+        this.robotId      = robotId;
+        this.authCode     = authCode;
+        this.deviceId     = deviceId;
+        // robotDeviceId = the robot's hardware ID (used in targetId for commands)
+        // The robotId from plist is the UUID; the deviceId of the robot is "86A4CF12C80809"
+        // We'll update it from status responses; default to authCode-based discovery
+        this.robotDeviceId = robotId; // overridden from status push
 
         new Thread(this::runSocket).start();
     }
@@ -102,12 +109,17 @@ public class CongaClient {
             socket = new Socket();
             socket.connect(new InetSocketAddress(HOST, PORT), 10_000);
             socket.setSoTimeout(60_000);
+            socket.setKeepAlive(true);
             out = socket.getOutputStream();
             in  = socket.getInputStream();
             running = true;
             listener.onConnected();
 
             sendLoginReq();
+
+            // Keepalive: send getStatus every 30s
+            new Thread(this::keepAliveLoop).start();
+
             readLoop();
 
         } catch (Exception e) {
@@ -115,6 +127,21 @@ public class CongaClient {
             listener.onDisconnected(e.getMessage());
         } finally {
             close();
+        }
+    }
+
+    private void keepAliveLoop() {
+        while (running) {
+            try {
+                Thread.sleep(30_000);
+                if (running) {
+                    sendCmd(CongaProtocol.CMD_GET_STATUS);
+                }
+            } catch (InterruptedException e) {
+                break;
+            } catch (Exception e) {
+                Log.w(TAG, "Keepalive error: " + e.getMessage());
+            }
         }
     }
 
@@ -153,9 +180,9 @@ public class CongaClient {
                 JSONObject ctrl = new JSONObject();
                 JSONObject val  = new JSONObject();
                 ctrl.put("authCode",   authCode);
-                ctrl.put("deviceIp",   "");
-                ctrl.put("devicePort", "8888");
-                ctrl.put("targetId",   robotId);
+                ctrl.put("deviceIp",   robotIp);
+                ctrl.put("devicePort", String.valueOf(robotPort));
+                ctrl.put("targetId",   robotDeviceId);
                 ctrl.put("targetType", "1");
                 val.put("transitCmd", transitCmd);
 
@@ -166,7 +193,7 @@ public class CongaClient {
                 req.put("value",   val);
 
                 sendFrame(CongaProtocol.MSG_CMD_REQ, req.toString());
-                Log.d(TAG, "CMD sent: " + transitCmd);
+                Log.d(TAG, "CMD sent: transitCmd=" + transitCmd + " target=" + robotDeviceId);
             } catch (Exception e) {
                 listener.onError("CMD error: " + e.getMessage());
             }
@@ -235,18 +262,21 @@ public class CongaClient {
                         status.brush      = parseInt(value.optString("brush", "0"));
                         status.error      = parseInt(value.optString("error", "0"));
                         status.version    = value.optString("version1", value.optString("version", ""));
-                        status.deviceIp   = value.optString("deviceIp", "");
+                        status.deviceIp   = value.optString("deviceIp", robotIp);
                         status.devicePort = parseInt(value.optString("devicePort", "8888"));
 
-                        // Update authCode from control block if present
+                        // Update robot IP/port from live response
+                        if (!status.deviceIp.isEmpty()) robotIp = status.deviceIp;
+                        if (status.devicePort > 0) robotPort = status.devicePort;
+
+                        // Update robotDeviceId from control block
                         JSONObject ctrl = obj.optJSONObject("control");
                         if (ctrl != null) {
-                            String ac = ctrl.optString("authCode", "");
-                            if (!ac.isEmpty()) {
-                                authCode = ac;
-                                status.authCode = ac;
+                            String tid = ctrl.optString("targetId", "");
+                            if (!tid.isEmpty()) {
+                                robotDeviceId = tid;
+                                status.robotId = tid;
                             }
-                            status.robotId = ctrl.optString("targetId", robotId);
                         }
                         listener.onStatusUpdate(status);
                     }
