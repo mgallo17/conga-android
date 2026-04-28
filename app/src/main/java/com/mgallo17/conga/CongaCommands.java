@@ -52,6 +52,7 @@ public final class CongaCommands {
     public static final String PREFS_NAME     = "conga_prefs";
     public static final String PREF_EMAIL     = "email";
     public static final String PREF_PASSWORD  = "password";
+    public static final String PREF_SESSION_ID= "session_id";
     public static final String PREF_USER_ID   = "user_id";
     public static final String PREF_DEVICE_ID = "device_id";
 
