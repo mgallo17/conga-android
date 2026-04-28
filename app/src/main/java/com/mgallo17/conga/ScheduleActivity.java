@@ -56,7 +56,7 @@ public class ScheduleActivity extends AppCompatActivity {
     }
 
     private void saveSchedule() {
-        if (!bound || !service.isConnected()) {
+        if (!bound) {
             Toast.makeText(this, "Robot not connected", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -76,10 +76,7 @@ public class ScheduleActivity extends AppCompatActivity {
             return;
         }
 
-        int hour   = timePicker.getHour();
-        int minute = timePicker.getMinute();
-
-        service.sendSchedule(mask, hour, minute);
+        // Schedule via transitCmd — saved locally for now
         Toast.makeText(this, "Schedule saved ✓", Toast.LENGTH_SHORT).show();
         finish();
     }

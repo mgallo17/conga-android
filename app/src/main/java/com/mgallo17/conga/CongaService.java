@@ -33,9 +33,7 @@ public class CongaService extends Service implements CongaClient.Listener {
     @Override
     public void onCreate() {
         super.onCreate();
-        client      = new CongaClient();
         broadcaster = LocalBroadcastManager.getInstance(this);
-        client.setListener(this);
         createNotificationChannel();
     }
 
@@ -63,19 +61,17 @@ public class CongaService extends Service implements CongaClient.Listener {
     // Public API
     // ---------------------------------------------------------------
 
-    public void connect(String email, String password, String deviceId) {
-        client.connect(email, password, deviceId);
+    public void connect(String token, String userId, String robotId,
+                        String authCode, String deviceId) {
+        client = new CongaClient(this);
+        client.connect(token, userId, robotId, authCode, deviceId);
     }
 
-    public void disconnect() { client.disconnect(); }
+    public void disconnect() { if (client != null) client.disconnect(); }
 
-    public void sendCommand(int cmd) { client.sendCommand(cmd); }
-
-    public void sendSchedule(int daysMask, int hour, int minute) {
-        client.sendSchedule(daysMask, hour, minute);
+    public void sendCmd(String transitCmd) {
+        if (client != null) client.sendCmd(transitCmd);
     }
-
-    public boolean isConnected() { return client != null && client.isConnected(); }
 
     // ---------------------------------------------------------------
     // CongaClient.Listener
@@ -87,13 +83,7 @@ public class CongaService extends Service implements CongaClient.Listener {
         broadcast(CongaCommands.ACTION_CONNECTED);
     }
 
-    @Override public void onDisconnected() {
-        Log.d(TAG, "Disconnected");
-        updateNotification("Disconnected");
-        broadcast(CongaCommands.ACTION_DISCONNECTED);
-    }
-
-    @Override public void onLoginSuccess(int userId) {
+    @Override public void onLoginSuccess() {
         Log.d(TAG, "Login OK");
         updateNotification("Conga connected ✓");
         broadcast(CongaCommands.ACTION_LOGIN_SUCCESS);
@@ -107,20 +97,22 @@ public class CongaService extends Service implements CongaClient.Listener {
         broadcaster.sendBroadcast(intent);
     }
 
-    @Override public void onStatus(CongaMessage.StatusResponse status) {
+    @Override public void onStatusUpdate(CongaClient.RobotStatus status) {
+        updateNotification("Battery: " + status.battery + "% — " + status.workStateLabel());
         Intent intent = new Intent(CongaCommands.ACTION_STATUS_UPDATE);
-        intent.putExtra(CongaCommands.EXTRA_STATE,      status.state);
-        intent.putExtra(CongaCommands.EXTRA_BATTERY,    status.battery);
-        intent.putExtra(CongaCommands.EXTRA_POS_X,      status.posX);
-        intent.putExtra(CongaCommands.EXTRA_POS_Y,      status.posY);
-        intent.putExtra(CongaCommands.EXTRA_CLEAN_TIME, status.cleanTime);
-        intent.putExtra(CongaCommands.EXTRA_CLEAN_AREA, status.cleanArea);
+        intent.putExtra(CongaCommands.EXTRA_BATTERY,  status.battery);
+        intent.putExtra(CongaCommands.EXTRA_STATE,     status.workState);
         broadcaster.sendBroadcast(intent);
+    }
+
+    @Override public void onDisconnected(String reason) {
+        Log.d(TAG, "Disconnected: " + reason);
+        updateNotification("Disconnected");
+        broadcast(CongaCommands.ACTION_DISCONNECTED);
     }
 
     @Override public void onError(String message) {
         Log.e(TAG, "Error: " + message);
-        updateNotification("Error: " + message);
     }
 
     // ---------------------------------------------------------------
