@@ -79,9 +79,12 @@ public class MainActivity extends AppCompatActivity implements CongaClient.Liste
         return true;
     }
 
+    private boolean settingsChanged = false;
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == 1) {
+            settingsChanged = true;
             startActivity(new Intent(this, SettingsActivity.class));
             return true;
         }
@@ -91,9 +94,11 @@ public class MainActivity extends AppCompatActivity implements CongaClient.Liste
     @Override
     protected void onResume() {
         super.onResume();
-        // Reconnect if settings changed
-        if (client != null) client.disconnect();
-        connectSocket();
+        if (settingsChanged) {
+            settingsChanged = false;
+            if (client != null) client.disconnect();
+            connectSocket();
+        }
     }
 
     private void connectSocket() {
@@ -176,6 +181,7 @@ public class MainActivity extends AppCompatActivity implements CongaClient.Liste
         btnStart.setEnabled(enabled);
         btnHome.setEnabled(enabled);
         btnStatus.setEnabled(enabled);
+        btnSettings.setEnabled(true); // always enabled
         if (!enabled) {
             tvBattery.setText("🔋 Battery: --");
             tvState.setText("⚙️ State: --");
